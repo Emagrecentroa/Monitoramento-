@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Acompanhamento · Emagrecentro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Firebase (compat SDK) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+<style>
+  :root{
+    --teal:#0E8E82;
+    --teal-dark:#0A6B62;
+    --navy:#16305C;
+    --gold:#B8912F;
+    --bg:#F6F4EF;
+    --card:#FFFFFF;
+    --ink:#1C2626;
+    --ink-soft:#5B6866;
+    --line:#E4E0D6;
+    --green:#2E8B57;
+    --green-bg:#E6F3EA;
+    --amber:#B8791E;
+    --amber-bg:#FBF0DD;
+    --red:#B8412F;
+    --red-bg:#FBE7E2;
+    --blue:#2C5F8A;
+    --blue-bg:#E5EEF5;
+    --gold-bg:#F7EFD9;
+    --radius:14px;
+    --shadow:0 1px 2px rgba(22,48,92,.06), 0 4px 16px rgba(22,48,92,.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Manrope',system-ui,-apple-system,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:76px;
+    min-height:100vh;
+  }
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;}
+
+  header.top{
+    background:var(--navy);
+    color:#fff;
+    padding:22px 20px 20px;
+    position:sticky; top:0; z-index:20;
+  }
+  header.top .brand{
+    font-size:11px; letter-spacing:.06em; color:#AFC3D8; margin-bottom:2px;
+  }
+  header.top h1{
+    font-size:20px; font-weight:800; margin:0;
+  }
+  header.top .sub{
+    font-size:13px; color:#C7D5E3; margin-top:4px;
+  }
+
+  main{padding:16px; max-width:640px; margin:0 auto;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* Painel */
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px;}
+  .stat{
+    background:var(--card); border-radius:var(--radius); padding:14px 10px;
+    text-align:center; box-shadow:var(--shadow);
+  }
+  .stat .n{font-size:24px; font-weight:800; color:var(--navy);}
+  .stat .l{font-size:11px; color:var(--ink-soft); margin-top:2px; line-height:1.3;}
+
+  h2.section-title{
+    font-size:15px; font-weight:700; color:var(--navy); margin:22px 0 10px;
+  }
+
+  .empty{
+    text-align:center; padding:40px 20px; color:var(--ink-soft); font-size:14px;
+  }
+
+  .patient-card{
+    background:var(--card); border-radius:var(--radius); padding:14px 16px;
+    box-shadow:var(--shadow); margin-bottom:10px; cursor:pointer;
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+  }
+  .patient-card .pinfo{min-width:0;}
+  .patient-card .pname{font-weight:700; font-size:15px; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .patient-card .pfase{font-size:12.5px; color:var(--ink-soft);}
+  .badge{
+    font-size:11px; font-weight:700; padding:5px 10px; border-radius:100px;
+    white-space:nowrap; flex-shrink:0;
+  }
+  .badge.green{background:var(--green-bg); color:var(--green);}
+  .badge.amber{background:var(--amber-bg); color:var(--amber);}
+  .badge.red{background:var(--red-bg); color:var(--red);}
+  .badge.blue{background:var(--blue-bg); color:var(--blue);}
+  .badge.gold{background:var(--gold-bg); color:var(--gold);}
+
+  /* Pacientes list */
+  .search-box{
+    width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--line);
+    background:var(--card); font-size:14px; margin-bottom:14px; font-family:inherit;
+  }
+
+  /* Ficha do paciente */
+  .back-link{
+    display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600;
+    color:var(--teal-dark); margin-bottom:14px; background:none; border:none; padding:0; cursor:pointer;
+  }
+  .ficha-header{
+    background:var(--card); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); margin-bottom:16px;
+  }
+  .ficha-header h2{margin:0 0 4px; font-size:19px; color:var(--navy);}
+  .ficha-header .contrato{font-size:12.5px; color:var(--ink-soft); margin-bottom:12px;}
+  .metrics{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;}
+  .metric{background:var(--bg); border-radius:10px; padding:10px 12px;}
+  .metric .v{font-size:17px; font-weight:800; color:var(--navy);}
+  .metric .l{font-size:11px; color:var(--ink-soft); margin-top:2px;}
+
+  .timeline{list-style:none; margin:0; padding:0;}
+  .timeline li{
+    display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--line);
+  }
+  .timeline li:last-child{border-bottom:none;}
+  .tdot{width:9px; height:9px; border-radius:50%; margin-top:6px; flex-shrink:0; background:var(--line);}
+  .tdot.done{background:var(--green);}
+  .tdot.current{background:var(--teal);}
+  .titem b{font-size:13.5px;}
+  .titem .meta{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+
+  .checkin-log{list-style:none; margin:0; padding:0;}
+  .checkin-log li{
+    padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;
+  }
+  .checkin-log li:last-child{border-bottom:none;}
+  .checkin-log .row1{display:flex; justify-content:space-between; font-weight:700;}
+  .checkin-log .row2{color:var(--ink-soft); margin-top:2px; font-size:12.5px;}
+
+  .card{
+    background:var(--card); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); margin-bottom:16px;
+  }
+
+  /* Formulários */
+  label{display:block; font-size:12.5px; font-weight:700; color:var(--navy); margin:14px 0 6px;}
+  label:first-child{margin-top:0;}
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--line);
+    font-size:14.5px; font-family:inherit; background:#fff; color:var(--ink);
+  }
+  .radio-group{display:flex; gap:10px;}
+  .radio-opt{
+    flex:1; text-align:center; padding:11px 8px; border-radius:10px; border:1.5px solid var(--line);
+    font-size:13.5px; font-weight:700; cursor:pointer; color:var(--ink-soft);
+  }
+  .radio-opt.sel-pos{border-color:var(--green); background:var(--green-bg); color:var(--green);}
+  .radio-opt.sel-neg{border-color:var(--red); background:var(--red-bg); color:var(--red);}
+  .radio-opt.sel-fase{border-color:var(--teal); background:#E6F3F1; color:var(--teal-dark);}
+
+  .btn{
+    width:100%; padding:13px; border-radius:12px; border:none; font-size:14.5px;
+    font-weight:700; cursor:pointer; margin-top:18px;
+  }
+  .btn-primary{background:var(--teal); color:#fff;}
+  .btn-primary:active{background:var(--teal-dark);}
+  .btn-ghost{background:var(--bg); color:var(--navy); border:1px solid var(--line);}
+
+  .fab{
+    position:fixed; bottom:82px; right:18px; width:52px; height:52px; border-radius:50%;
+    background:var(--teal); color:#fff; border:none; font-size:26px; box-shadow:0 4px 14px rgba(14,142,130,.4);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:15;
+  }
+
+  nav.bottom{
+    position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--line);
+    display:flex; z-index:20; padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav.bottom button{
+    flex:1; background:none; border:none; padding:11px 4px 9px; text-align:center; cursor:pointer; color:var(--ink-soft);
+  }
+  nav.bottom button .ic{font-size:19px; display:block;}
+  nav.bottom button .tx{font-size:10.5px; font-weight:700; margin-top:2px; display:block;}
+  nav.bottom button.active{color:var(--teal-dark);}
+
+  .toast{
+    position:fixed; top:16px; left:50%; transform:translateX(-50%); background:var(--navy); color:#fff;
+    padding:11px 18px; border-radius:10px; font-size:13px; font-weight:600; z-index:100; opacity:0;
+    transition:opacity .25s; pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+
+  .conn-warning{
+    background:var(--amber-bg); color:var(--amber); font-size:12.5px; padding:10px 14px;
+    border-radius:10px; margin-bottom:14px; display:none;
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">EMAGRECENTRO ARARUAMA</div>
+  <h1>Acompanhamento de Pacientes</h1>
+  <div class="sub">Método 4 Fases · Garantia de resultado</div>
+</header>
+
+<main>
+
+  <div id="conn-warning" class="conn-warning">Configure o Firebase no topo do arquivo (firebaseConfig) para ativar o salvamento na nuvem.</div>
+
+  <!-- ===== PAINEL ===== -->
+  <section id="view-painel" class="view active">
+    <div class="stat-row">
+      <div class="stat"><div class="n" id="st-total">0</div><div class="l">Pacientes ativos</div></div>
+      <div class="stat"><div class="n" id="st-teste">0</div><div class="l">Prontos p/ teste</div></div>
+      <div class="stat"><div class="n" id="st-atraso">0</div><div class="l">Atrasados</div></div>
+    </div>
+
+    <h2 class="section-title">Precisa de atenção</h2>
+    <div id="lista-atencao"></div>
+    <div id="empty-atencao" class="empty" style="display:none;">Nenhum paciente pendente no momento.</div>
+
+    <h2 class="section-title">Meta batida recentemente</h2>
+    <div id="lista-concluidos"></div>
+    <div id="empty-concluidos" class="empty" style="display:none;">Ainda ninguém bateu a meta este mês.</div>
+  </section>
+
+  <!-- ===== PACIENTES ===== -->
+  <section id="view-pacientes" class="view">
+    <input type="text" class="search-box" id="busca" placeholder="Buscar paciente por nome ou contrato...">
+    <div id="lista-todos"></div>
+    <div id="empty-todos" class="empty" style="display:none;">Nenhum paciente cadastrado ainda. Toque em + para adicionar.</div>
+  </section>
+
+  <!-- ===== FICHA DO PACIENTE ===== -->
+  <section id="view-ficha" class="view">
+    <button class="back-link" onclick="mostrarView('pacientes')">← Voltar</button>
+    <div id="ficha-conteudo"></div>
+  </section>
+
+  <!-- ===== NOVO PACIENTE ===== -->
+  <section id="view-novo" class="view">
+    <button class="back-link" onclick="mostrarView('painel')">← Voltar</button>
+    <div class="card">
+      <label>Nome do paciente</label>
+      <input type="text" id="f-nome" placeholder="Nome completo">
+
+      <label>Nº do contrato</label>
+      <input type="text" id="f-contrato" placeholder="Ex: 2026-0091">
+
+      <label>Data de início</label>
+      <input type="date" id="f-data">
+
+      <label>Peso inicial (kg)</label>
+      <input type="number" step="0.1" id="f-peso">
+
+      <label>Meta de perda (%)</label>
+      <input type="number" step="0.5" id="f-meta" placeholder="Ex: 8" value="8">
+
+      <label>Fase inicial</label>
+      <select id="f-fase-inicial">
+        <option value="detox">Fase 1 · Detox</option>
+        <option value="redox">Fase 2 · Redox</option>
+        <option value="especial2b">Fase 2B · Especial</option>
+        <option value="reindoxA">Fase 3A · Reindox (frutas)</option>
+        <option value="reindoxB">Fase 3B · Reindox (grãos)</option>
+        <option value="equilibrio">Fase 4 · Equilíbrio</option>
+      </select>
+
+      <button class="btn btn-primary" onclick="salvarNovoPaciente()">Cadastrar paciente</button>
+    </div>
+  </section>
+
+</main>
+
+<button class="fab" onclick="mostrarView('novo')" title="Novo paciente">+</button>
+
+<nav class="bottom">
+  <button id="nav-painel" class="active" onclick="mostrarView('painel')">
+    <span class="ic">◐</span><span class="tx">Painel</span>
+  </button>
+  <button id="nav-pacientes" onclick="mostrarView('pacientes')">
+    <span class="ic">☰</span><span class="tx">Pacientes</span>
+  </button>
+  <button id="nav-novo" onclick="mostrarView('novo')">
+    <span class="ic">+</span><span class="tx">Novo</span>
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   CONFIGURAÇÃO DO FIREBASE
+   Crie um projeto em https://console.firebase.google.com,
+   ative o Firestore (modo produção) e cole as credenciais
+   do seu app da web aqui embaixo — mesmo padrão dos seus
+   outros apps (Estoque, Indicações, etc).
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  projectId: "SEU_PROJETO",
+  storageBucket: "SEU_PROJETO.appspot.com",
+  messagingSenderId: "SEU_SENDER_ID",
+  appId: "SEU_APP_ID"
+};
+
+let db = null;
+try{
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+}catch(e){
+  console.warn("Firebase não configurado ainda:", e);
+  document.getElementById('conn-warning').style.display = 'block';
+}
+
+/* =========================================================
+   DEFINIÇÃO DAS FASES (Método 4 Fases)
+   Ajuste durações aqui se o protocolo mudar.
+   ========================================================= */
+const FASES = {
+  detox:      { nome: "Fase 1 · Detox",              duracao: 7,   proxima: "escolha23" },
+  redox:      { nome: "Fase 2 · Redox",               duracao: 30,  proxima: "reindoxA" },
+  especial2b: { nome: "Fase 2B · Especial",           duracao: 30,  proxima: "reindoxA" },
+  reindoxA:   { nome: "Fase 3A · Reindox (frutas)",   duracao: 15,  proxima: "reindoxB" },
+  reindoxB:   { nome: "Fase 3B · Reindox (grãos)",    duracao: 15,  proxima: "equilibrio" },
+  equilibrio: { nome: "Fase 4 · Equilíbrio",          duracao: 120, proxima: "concluido" },
+  concluido:  { nome: "Programa concluído",           duracao: 0,   proxima: null }
+};
+const ORDEM_FASES = ["detox","redox","reindoxA","reindoxB","equilibrio","concluido"];
+
+let pacientes = [];   // cache local
+let pacienteAberto = null;
+
+/* ---------- utilidades de data ---------- */
+function hoje(){ return new Date(new Date().toDateString()); }
+function paraData(str){ return str ? new Date(str + "T00:00:00") : null; }
+function diasEntre(a,b){ return Math.floor((b-a)/86400000); }
+function formatarData(str){
+  if(!str) return "—";
+  const d = paraData(str);
+  return d.toLocaleDateString('pt-BR');
+}
+
+/* ---------- duração total estimada do programa a partir da fase inicial ---------- */
+function duracaoTotalEstimativa(p){
+  // soma as durações padrão de todas as fases do início até "equilibrio" (não conta os 120 dias de manutenção na meta de emagrecimento)
+  const seq = ["detox","redox","reindoxA","reindoxB"];
+  let total = 0, contando = false;
+  for(const f of seq){
+    if(f === p.faseInicial) contando = true;
+    if(contando) total += FASES[f].duracao;
+  }
+  return total || 52; // fallback: 7+30+15 (sem detox, ex.)
+}
+
+/* ---------- status calculado do paciente ---------- */
+function calcularStatus(p){
+  if(p.faseAtual === 'concluido'){
+    return { label: "Meta batida", cls: "gold" };
+  }
+  if(p.status === 'aguardando_reteste'){
+    return { label: "Aguardando reteste", cls: "amber" };
+  }
+  const dIni = paraData(p.faseIniciadaEm);
+  const diasNaFase = diasEntre(dIni, hoje());
+  const duracaoFase = FASES[p.faseAtual].duracao;
+
+  if(diasNaFase >= duracaoFase){
+    return { label: "Pronto p/ teste", cls: "blue" };
+  }
+
+  const diasTotais = diasEntre(paraData(p.dataInicio), hoje());
+  const duracaoTotal = duracaoTotalEstimativa(p);
+  const percEsperado = (diasTotais / duracaoTotal) * p.metaPercentual;
+  const percAtual = calcularPercentualPerdido(p);
+
+  if(percAtual < percEsperado * 0.75){
+    return { label: "Atrasado", cls: "red" };
+  }
+  return { label: "No ritmo", cls: "green" };
+}
+
+function calcularPercentualPerdido(p){
+  if(!p.pesoAtual || !p.pesoInicial) return 0;
+  return ((p.pesoInicial - p.pesoAtual) / p.pesoInicial) * 100;
+}
+
+/* =========================================================
+   NAVEGAÇÃO
+   ========================================================= */
+function mostrarView(nome){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-' + nome).classList.add('active');
+  document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.remove('active'));
+  const navBtn = document.getElementById('nav-' + nome);
+  if(navBtn) navBtn.classList.add('active');
+  if(nome === 'pacientes') renderListaTodos();
+  if(nome === 'painel') renderPainel();
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* =========================================================
+   CARREGAMENTO / SINCRONIZAÇÃO
+   ========================================================= */
+function iniciarSync(){
+  if(!db) return;
+  db.collection('pacientes').orderBy('nome').onSnapshot(snap=>{
+    pacientes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderPainel();
+    renderListaTodos();
+    if(pacienteAberto) abrirFicha(pacienteAberto);
+  }, err=>{
+    console.error(err);
+    toast("Erro ao sincronizar com o Firebase");
+  });
+}
+
+/* =========================================================
+   RENDER: PAINEL
+   ========================================================= */
+function renderPainel(){
+  const ativos = pacientes.filter(p => p.faseAtual !== 'concluido');
+  document.getElementById('st-total').textContent = ativos.length;
+
+  let prontos = 0, atrasados = 0;
+  const atencao = [];
+  ativos.forEach(p=>{
+    const s = calcularStatus(p);
+    if(s.cls === 'blue') prontos++;
+    if(s.cls === 'red') atrasados++;
+    if(s.cls === 'red' || s.cls === 'blue' || s.cls === 'amber') atencao.push(p);
+  });
+  document.getElementById('st-teste').textContent = prontos;
+  document.getElementById('st-atraso').textContent = atrasados;
+
+  const wrapAtencao = document.getElementById('lista-atencao');
+  wrapAtencao.innerHTML = '';
+  atencao.slice(0, 8).forEach(p => wrapAtencao.appendChild(cartaoPaciente(p)));
+  document.getElementById('empty-atencao').style.display = atencao.length ? 'none' : 'block';
+
+  const concluidos = pacientes.filter(p => p.faseAtual === 'concluido')
+    .sort((a,b) => (b.concluidoEm||'').localeCompare(a.concluidoEm||'')).slice(0,5);
+  const wrapConc = document.getElementById('lista-concluidos');
+  wrapConc.innerHTML = '';
+  concluidos.forEach(p => wrapConc.appendChild(cartaoPaciente(p)));
+  document.getElementById('empty-concluidos').style.display = concluidos.length ? 'none' : 'block';
+}
+
+/* =========================================================
+   RENDER: LISTA DE TODOS OS PACIENTES
+   ========================================================= */
+function renderListaTodos(){
+  const termo = (document.getElementById('busca').value || '').toLowerCase();
+  const filtrados = pacientes.filter(p =>
+    p.nome.toLowerCase().includes(termo) || (p.contrato||'').toLowerCase().includes(termo)
+  );
+  const wrap = document.getElementById('lista-todos');
+  wrap.innerHTML = '';
+  filtrados.forEach(p => wrap.appendChild(cartaoPaciente(p)));
+  document.getElementById('empty-todos').style.display = filtrados.length ? 'none' : 'block';
+}
+document.getElementById('busca').addEventListener('input', renderListaTodos);
+
+function cartaoPaciente(p){
+  const div = document.createElement('div');
+  div.className = 'patient-card';
+  const s = calcularStatus(p);
+  div.innerHTML = `
+    <div class="pinfo">
+      <div class="pname">${p.nome}</div>
+      <div class="pfase">${FASES[p.faseAtual].nome}</div>
+    </div>
+    <span class="badge ${s.cls}">${s.label}</span>
+  `;
+  div.onclick = () => abrirFicha(p.id);
+  return div;
+}
+
+/* =========================================================
+   FICHA DO PACIENTE
+   ========================================================= */
+function abrirFicha(id){
+  pacienteAberto = id;
+  const p = pacientes.find(x => x.id === id);
+  if(!p) return;
+  mostrarViewSemNav('ficha');
+
+  const s = calcularStatus(p);
+  const perc = calcularPercentualPerdido(p).toFixed(1);
+  const checkins = (p.checkins || []).slice().reverse();
+
+  let timelineHtml = '';
+  ORDEM_FASES.forEach(f => {
+    if(f === 'redox' && p.checkins && p.checkins.some(c=>c.faseNaEpoca==='especial2b')) return; // mostra a variante usada
+    const atual = p.faseAtual === f;
+    const passada = ORDEM_FASES.indexOf(f) < ORDEM_FASES.indexOf(p.faseAtual);
+    timelineHtml += `
+      <li>
+        <div class="tdot ${passada?'done':atual?'current':''}"></div>
+        <div class="titem">
+          <b>${FASES[f].nome}</b>
+          <div class="meta">${FASES[f].duracao ? FASES[f].duracao + ' dias' : 'Etapa final'}${atual ? ' · em andamento' : passada ? ' · concluída' : ''}</div>
+        </div>
+      </li>`;
+  });
+
+  let checkinsHtml = checkins.length ? '' : '<div class="empty">Nenhum check-in registrado ainda.</div>';
+  checkins.forEach(c => {
+    checkinsHtml += `
+      <li>
+        <div class="row1"><span>${formatarData(c.data)}</span><span>${c.peso} kg</span></div>
+        <div class="row2">${FASES[c.faseNaEpoca]?.nome || c.faseNaEpoca} · teste ${c.teste === 'positivo' ? 'positivo ✓' : 'negativo'}${c.obs ? ' · ' + c.obs : ''}</div>
+      </li>`;
+  });
+
+  document.getElementById('ficha-conteudo').innerHTML = `
+    <div class="ficha-header">
+      <h2>${p.nome}</h2>
+      <div class="contrato">Contrato nº ${p.contrato || '—'} · início em ${formatarData(p.dataInicio)}</div>
+      <span class="badge ${s.cls}">${s.label}</span>
+      <div class="metrics">
+        <div class="metric"><div class="v">${p.pesoInicial} → ${p.pesoAtual || p.pesoInicial} kg</div><div class="l">Peso inicial → atual</div></div>
+        <div class="metric"><div class="v">${perc}% de ${p.metaPercentual}%</div><div class="l">Perda vs. meta da garantia</div></div>
+      </div>
+    </div>
+
+    <h2 class="section-title">Linha do tempo das fases</h2>
+    <div class="card"><ul class="timeline">${timelineHtml}</ul></div>
+
+    ${p.faseAtual !== 'concluido' ? `
+    <h2 class="section-title">Registrar check-in</h2>
+    <div class="card">
+      <label>Data</label>
+      <input type="date" id="ck-data" value="${new Date().toISOString().slice(0,10)}">
+
+      <label>Peso atual (kg)</label>
+      <input type="number" step="0.1" id="ck-peso" value="${p.pesoAtual || p.pesoInicial}">
+
+      <label>Resultado do teste de urina</label>
+      <div class="radio-group">
+        <div class="radio-opt" id="ck-pos" onclick="selecionarTeste('positivo')">Positivo</div>
+        <div class="radio-opt" id="ck-neg" onclick="selecionarTeste('negativo')">Negativo</div>
+      </div>
+
+      ${p.faseAtual === 'detox' ? `
+      <label>Se positivo, próxima fase</label>
+      <div class="radio-group">
+        <div class="radio-opt" id="ck-fase-redox" onclick="selecionarProximaFase('redox')">Fase 2 · Redox</div>
+        <div class="radio-opt" id="ck-fase-2b" onclick="selecionarProximaFase('especial2b')">Fase 2B · Especial</div>
+      </div>` : ''}
+
+      <label>Observação (opcional)</label>
+      <textarea id="ck-obs" rows="2" placeholder="Ex: relatou fadiga leve"></textarea>
+
+      <button class="btn btn-primary" onclick="salvarCheckin('${p.id}')">Salvar check-in</button>
+    </div>` : `
+    <div class="card" style="text-align:center;">
+      <div class="badge gold" style="font-size:13px; padding:8px 16px;">Programa concluído — meta da garantia atingida</div>
+    </div>`}
+
+    <h2 class="section-title">Histórico de check-ins</h2>
+    <div class="card"><ul class="checkin-log">${checkinsHtml}</ul></div>
+  `;
+}
+
+function mostrarViewSemNav(nome){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-' + nome).classList.add('active');
+  document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.remove('active'));
+}
+
+let testeSelecionado = null;
+let proximaFaseSelecionada = null;
+function selecionarTeste(v){
+  testeSelecionado = v;
+  document.getElementById('ck-pos').classList.toggle('sel-pos', v==='positivo');
+  document.getElementById('ck-neg').classList.toggle('sel-neg', v==='negativo');
+}
+function selecionarProximaFase(v){
+  proximaFaseSelecionada = v;
+  const redoxEl = document.getElementById('ck-fase-redox');
+  const el2b = document.getElementById('ck-fase-2b');
+  if(redoxEl) redoxEl.classList.toggle('sel-fase', v==='redox');
+  if(el2b) el2b.classList.toggle('sel-fase', v==='especial2b');
+}
+
+/* =========================================================
+   SALVAR CHECK-IN + MOTOR DE AVANÇO DE FASE
+   ========================================================= */
+async function salvarCheckin(id){
+  if(!db){ toast("Configure o Firebase primeiro"); return; }
+  const p = pacientes.find(x => x.id === id);
+  const data = document.getElementById('ck-data').value;
+  const peso = parseFloat(document.getElementById('ck-peso').value);
+  const obs = document.getElementById('ck-obs').value.trim();
+
+  if(!data || isNaN(peso)){ toast("Preencha data e peso"); return; }
+  if(!testeSelecionado){ toast("Selecione o resultado do teste"); return; }
+  if(p.faseAtual === 'detox' && testeSelecionado === 'positivo' && !proximaFaseSelecionada){
+    toast("Selecione a próxima fase (Redox ou Especial)"); return;
+  }
+
+  const checkin = { data, peso, teste: testeSelecionado, obs, faseNaEpoca: p.faseAtual };
+  const update = {
+    pesoAtual: peso,
+    checkins: firebase.firestore.FieldValue.arrayUnion(checkin)
+  };
+
+  if(testeSelecionado === 'positivo'){
+    let proxima = FASES[p.faseAtual].proxima;
+    if(proxima === 'escolha23') proxima = proximaFaseSelecionada;
+    update.faseAtual = proxima;
+    update.faseIniciadaEm = data;
+    update.status = 'ativo';
+    if(proxima === 'concluido') update.concluidoEm = data;
+  } else {
+    update.status = 'aguardando_reteste';
+  }
+
+  await db.collection('pacientes').doc(id).update(update);
+  testeSelecionado = null;
+  proximaFaseSelecionada = null;
+  toast(testeSelecionado === 'positivo' ? "Fase avançada!" : "Check-in salvo");
+}
+
+/* =========================================================
+   NOVO PACIENTE
+   ========================================================= */
+async function salvarNovoPaciente(){
+  if(!db){ toast("Configure o Firebase primeiro"); return; }
+  const nome = document.getElementById('f-nome').value.trim();
+  const contrato = document.getElementById('f-contrato').value.trim();
+  const dataInicio = document.getElementById('f-data').value;
+  const pesoInicial = parseFloat(document.getElementById('f-peso').value);
+  const metaPercentual = parseFloat(document.getElementById('f-meta').value);
+  const faseInicial = document.getElementById('f-fase-inicial').value;
+
+  if(!nome || !dataInicio || isNaN(pesoInicial) || isNaN(metaPercentual)){
+    toast("Preencha todos os campos obrigatórios");
+    return;
+  }
+
+  await db.collection('pacientes').add({
+    nome, contrato, dataInicio, pesoInicial,
+    pesoAtual: pesoInicial,
+    metaPercentual,
+    faseInicial,
+    faseAtual: faseInicial,
+    faseIniciadaEm: dataInicio,
+    status: 'ativo',
+    checkins: [],
+    criadoEm: new Date().toISOString()
+  });
+
+  document.getElementById('f-nome').value = '';
+  document.getElementById('f-contrato').value = '';
+  document.getElementById('f-data').value = '';
+  document.getElementById('f-peso').value = '';
+  document.getElementById('f-meta').value = '8';
+  document.getElementById('f-fase-inicial').value = 'detox';
+
+  toast("Paciente cadastrado!");
+  mostrarView('pacientes');
+}
+
+/* =========================================================
+   START
+   ========================================================= */
+iniciarSync();
+</script>
+
+</body>
+</html>
