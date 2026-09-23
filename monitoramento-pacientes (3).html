@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Acompanhamento · Emagrecentro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js"></script>
+
+<style>
+  :root{
+    --teal:#0E8E82; --teal-dark:#0A6B62; --navy:#16305C; --gold:#B8912F;
+    --bg:#F6F4EF; --card:#FFFFFF; --ink:#1C2626; --ink-soft:#5B6866; --line:#E4E0D6;
+    --green:#2E8B57; --green-bg:#E6F3EA; --amber:#B8791E; --amber-bg:#FBF0DD;
+    --red:#B8412F; --red-bg:#FBE7E2; --blue:#2C5F8A; --blue-bg:#E5EEF5; --gold-bg:#F7EFD9;
+    --radius:14px; --shadow:0 1px 2px rgba(22,48,92,.06), 0 4px 16px rgba(22,48,92,.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{font-family:'Manrope',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--ink);
+    -webkit-font-smoothing:antialiased; padding-bottom:76px; min-height:100vh;}
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;}
+  header.top{background:var(--navy); color:#fff; padding:22px 20px 20px; position:sticky; top:0; z-index:20;}
+  header.top .brand{font-size:11px; letter-spacing:.06em; color:#AFC3D8; margin-bottom:2px;}
+  header.top h1{font-size:20px; font-weight:800; margin:0;}
+  header.top .sub{font-size:13px; color:#C7D5E3; margin-top:4px;}
+  main{padding:16px; max-width:640px; margin:0 auto;}
+  .view{display:none;}
+  .view.active{display:block;}
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px;}
+  .stat{background:var(--card); border-radius:var(--radius); padding:14px 10px; text-align:center; box-shadow:var(--shadow);}
+  .stat .n{font-size:24px; font-weight:800; color:var(--navy);}
+  .stat .l{font-size:11px; color:var(--ink-soft); margin-top:2px; line-height:1.3;}
+  h2.section-title{font-size:15px; font-weight:700; color:var(--navy); margin:22px 0 10px;}
+  .empty{text-align:center; padding:40px 20px; color:var(--ink-soft); font-size:14px;}
+  .patient-card{background:var(--card); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow);
+    margin-bottom:10px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .patient-card .pinfo{min-width:0;}
+  .patient-card .pname{font-weight:700; font-size:15px; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .patient-card .pfase{font-size:12.5px; color:var(--ink-soft);}
+  .badge{font-size:11px; font-weight:700; padding:5px 10px; border-radius:100px; white-space:nowrap; flex-shrink:0;}
+  .badge.green{background:var(--green-bg); color:var(--green);}
+  .badge.amber{background:var(--amber-bg); color:var(--amber);}
+  .badge.red{background:var(--red-bg); color:var(--red);}
+  .badge.blue{background:var(--blue-bg); color:var(--blue);}
+  .badge.gold{background:var(--gold-bg); color:var(--gold);}
+  .badge.gray{background:#EEE; color:#777;}
+  .search-box{width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--line);
+    background:var(--card); font-size:14px; margin-bottom:14px; font-family:inherit;}
+  .back-link{display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600;
+    color:var(--teal-dark); margin-bottom:14px; background:none; border:none; padding:0; cursor:pointer;}
+  .ficha-header{background:var(--card); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); margin-bottom:16px;}
+  .ficha-header h2{margin:0 0 4px; font-size:19px; color:var(--navy);}
+  .ficha-header .contrato{font-size:12.5px; color:var(--ink-soft); margin-bottom:12px;}
+  .badge-row{display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;}
+  .metrics{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;}
+  .metric{background:var(--bg); border-radius:10px; padding:10px 12px;}
+  .metric .v{font-size:16px; font-weight:800; color:var(--navy);}
+  .metric .l{font-size:11px; color:var(--ink-soft); margin-top:2px;}
+  .timeline{list-style:none; margin:0; padding:0;}
+  .timeline li{display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--line);}
+  .timeline li:last-child{border-bottom:none;}
+  .tdot{width:9px; height:9px; border-radius:50%; margin-top:6px; flex-shrink:0; background:var(--line);}
+  .tdot.done{background:var(--green);}
+  .tdot.current{background:var(--teal);}
+  .titem b{font-size:13.5px;}
+  .titem .meta{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+  .checkin-log{list-style:none; margin:0; padding:0;}
+  .checkin-log li{padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;}
+  .checkin-log li:last-child{border-bottom:none;}
+  .checkin-log .row1{display:flex; justify-content:space-between; font-weight:700;}
+  .checkin-log .row2{color:var(--ink-soft); margin-top:2px; font-size:12.5px;}
+  .card{background:var(--card); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); margin-bottom:16px;}
+  label{display:block; font-size:12.5px; font-weight:700; color:var(--navy); margin:14px 0 6px;}
+  label:first-child{margin-top:0;}
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--line);
+    font-size:14.5px; font-family:inherit; background:#fff; color:var(--ink);}
+  textarea{resize:vertical;}
+  .radio-group{display:flex; gap:10px;}
+  .radio-opt{flex:1; text-align:center; padding:11px 8px; border-radius:10px; border:1.5px solid var(--line);
+    font-size:13.5px; font-weight:700; cursor:pointer; color:var(--ink-soft);}
+  .radio-opt.sel-pos{border-color:var(--green); background:var(--green-bg); color:var(--green);}
+  .radio-opt.sel-neg{border-color:var(--red); background:var(--red-bg); color:var(--red);}
+  .radio-opt.sel-fase{border-color:var(--teal); background:#E6F3F1; color:var(--teal-dark);}
+  .btn{width:100%; padding:13px; border-radius:12px; border:none; font-size:14.5px; font-weight:700; cursor:pointer; margin-top:18px;}
+  .btn-primary{background:var(--teal); color:#fff;}
+  .btn-primary:active{background:var(--teal-dark);}
+  .btn-ghost{background:var(--bg); color:var(--navy); border:1px solid var(--line);}
+  .btn-sm{margin-top:10px; padding:10px; font-size:13px;}
+  .fab{position:fixed; bottom:82px; right:18px; width:52px; height:52px; border-radius:50%;
+    background:var(--teal); color:#fff; border:none; font-size:26px; box-shadow:0 4px 14px rgba(14,142,130,.4);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:15;}
+  nav.bottom{position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--line);
+    display:flex; z-index:20; padding-bottom:env(safe-area-inset-bottom);}
+  nav.bottom button{flex:1; background:none; border:none; padding:11px 4px 9px; text-align:center; cursor:pointer; color:var(--ink-soft);}
+  nav.bottom button .ic{font-size:19px; display:block;}
+  nav.bottom button .tx{font-size:10.5px; font-weight:700; margin-top:2px; display:block;}
+  nav.bottom button.active{color:var(--teal-dark);}
+  .toast{position:fixed; top:16px; left:50%; transform:translateX(-50%); background:var(--navy); color:#fff;
+    padding:11px 18px; border-radius:10px; font-size:13px; font-weight:600; z-index:100; opacity:0;
+    transition:opacity .25s; pointer-events:none; max-width:88vw; text-align:center;}
+  .toast.show{opacity:1;}
+  .conn-warning{background:var(--amber-bg); color:var(--amber); font-size:12.5px; padding:10px 14px;
+    border-radius:10px; margin-bottom:14px; display:none;}
+  .thumb-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+  .thumb{width:72px; height:72px; border-radius:10px; overflow:hidden; position:relative; cursor:pointer; flex-shrink:0;}
+  .thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+  .thumb .data-tag{position:absolute; bottom:0; left:0; right:0; background:rgba(22,48,92,.75); color:#fff;
+    font-size:8.5px; text-align:center; padding:2px 0;}
+  .anamnese-img{width:100%; max-height:220px; object-fit:cover; border-radius:10px; margin-top:8px; cursor:pointer;}
+  .campo-extraido{font-size:13px; margin-top:8px;}
+  .campo-extraido b{display:block; color:var(--navy); font-size:12px; margin-bottom:2px;}
+  .campo-extraido span{color:var(--ink-soft);}
+  .loading-line{font-size:13px; color:var(--teal-dark); font-weight:600; margin-top:10px; display:none;}
+  .hidden-file{display:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">EMAGRECENTRO ARARUAMA</div>
+  <h1>Acompanhamento de Pacientes</h1>
+  <div class="sub">Método 4 Fases · Garantia de resultado</div>
+</header>
+
+<main>
+
+  <div id="conn-warning" class="conn-warning">Configure o Firebase no topo do arquivo (firebaseConfig) para ativar o salvamento na nuvem.</div>
+
+  <section id="view-painel" class="view active">
+    <div class="stat-row">
+      <div class="stat"><div class="n" id="st-total">0</div><div class="l">Pacientes ativos</div></div>
+      <div class="stat"><div class="n" id="st-teste">0</div><div class="l">Prontos p/ avançar</div></div>
+      <div class="stat"><div class="n" id="st-atraso">0</div><div class="l">Sem perda de peso</div></div>
+    </div>
+    <h2 class="section-title">Precisa de atenção</h2>
+    <div id="lista-atencao"></div>
+    <div id="empty-atencao" class="empty" style="display:none;">Nenhum paciente pendente no momento.</div>
+    <h2 class="section-title">Meta batida recentemente</h2>
+    <div id="lista-concluidos"></div>
+    <div id="empty-concluidos" class="empty" style="display:none;">Ainda ninguém bateu a meta este mês.</div>
+  </section>
+
+  <section id="view-pacientes" class="view">
+    <input type="text" class="search-box" id="busca" placeholder="Buscar paciente por nome ou contrato...">
+    <div id="lista-todos"></div>
+    <div id="empty-todos" class="empty" style="display:none;">Nenhum paciente cadastrado ainda. Toque em + para adicionar.</div>
+  </section>
+
+  <section id="view-ficha" class="view">
+    <button class="back-link" onclick="mostrarView('pacientes')">← Voltar</button>
+    <div id="ficha-conteudo"></div>
+  </section>
+
+  <section id="view-novo" class="view">
+    <button class="back-link" onclick="mostrarView('painel')">← Voltar</button>
+    <div class="card">
+      <label>Nome do paciente</label>
+      <input type="text" id="f-nome" placeholder="Nome completo">
+      <label>Nº do contrato</label>
+      <input type="text" id="f-contrato" placeholder="Ex: 2026-0091">
+      <label>Data de início</label>
+      <input type="date" id="f-data">
+      <label>Peso inicial (kg)</label>
+      <input type="number" step="0.1" id="f-peso">
+      <label>Peso desejado pelo paciente (kg)</label>
+      <input type="number" step="0.1" id="f-peso-desejado">
+      <label>Meta de perda (%) — conforme certificado de garantia</label>
+      <input type="number" step="0.5" id="f-meta" placeholder="Ex: 8" value="8">
+      <label>Fase inicial</label>
+      <select id="f-fase-inicial">
+        <option value="detox">Fase 1 · Detox</option>
+        <option value="redox">Fase 2 · Redox</option>
+        <option value="especial2b">Fase 2B · Especial</option>
+        <option value="reindoxA">Fase 3A · Reindox (frutas)</option>
+        <option value="reindoxB">Fase 3B · Reindox (grãos)</option>
+        <option value="equilibrio">Fase 4 · Equilíbrio</option>
+      </select>
+      <label>Anamnese</label>
+      <input type="file" accept="image/*" capture="environment" id="f-anamnese-foto" class="hidden-file" onchange="lerAnamneseIA('f-anamnese-foto','novo')">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('f-anamnese-foto').click()">📷 Fotografar e ler anamnese com IA</button>
+      <div class="loading-line" id="novo-anamnese-loading">Lendo a anamnese com IA...</div>
+      <img id="novo-anamnese-preview" class="anamnese-img" style="display:none;">
+      <div id="novo-anamnese-campos"></div>
+      <button class="btn btn-primary" onclick="salvarNovoPaciente()">Cadastrar paciente</button>
+    </div>
+  </section>
+
+</main>
+
+<button class="fab" onclick="mostrarView('novo')" title="Novo paciente">+</button>
+
+<nav class="bottom">
+  <button id="nav-painel" class="active" onclick="mostrarView('painel')"><span class="ic">◐</span><span class="tx">Painel</span></button>
+  <button id="nav-pacientes" onclick="mostrarView('pacientes')"><span class="ic">☰</span><span class="tx">Pacientes</span></button>
+  <button id="nav-novo" onclick="mostrarView('novo')"><span class="ic">+</span><span class="tx">Novo</span></button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   CONFIGURAÇÃO DO FIREBASE
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  projectId: "SEU_PROJETO",
+  storageBucket: "SEU_PROJETO.appspot.com",
+  messagingSenderId: "SEU_SENDER_ID",
+  appId: "SEU_APP_ID"
+};
+
+/* URL da Cloud Function que lê a anamnese com IA (ver functions/index.js). */
+const CLOUD_FUNCTION_URL = "https://SEU-REGIAO-SEU-PROJETO.cloudfunctions.net/lerAnamnese";
+
+let db = null, storage = null;
+try{
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+  storage = firebase.storage();
+}catch(e){
+  console.warn("Firebase não configurado ainda:", e);
+  document.getElementById('conn-warning').style.display = 'block';
+}
+
+/* =========================================================
+   DEFINIÇÃO DAS FASES (Método 4 Fases)
+
+   Regra de avanço (confirmada com a clínica):
+   - Fase 1 (Detox): avança por TEMPO (dias corridos), não por peso.
+     Ao completar a duração, a equipe escolhe a próxima fase (Redox ou 2B).
+   - Fase 2 / 2B / 3A / 3B: avança por PERDA DE PESO. Se, no check-in,
+     o peso estiver menor do que estava no início da fase, avança
+     automaticamente para a próxima. Se não perdeu, fica retido
+     ("sem perda de peso") até o próximo check-in mostrar perda.
+   - Fase 4 (Equilíbrio): avança por TEMPO (dias corridos) até concluir.
+   - O teste de urina (positivo/negativo) NÃO decide o avanço de fase —
+     ele só define se a garantia está válida naquele momento.
+   ========================================================= */
+const FASES = {
+  detox:      { nome: "Fase 1 · Detox",              duracao: 7,   proxima: "escolha23", tipo: "tempo" },
+  redox:      { nome: "Fase 2 · Redox",               duracao: 30,  proxima: "reindoxA",  tipo: "peso" },
+  especial2b: { nome: "Fase 2B · Especial",           duracao: 30,  proxima: "reindoxA",  tipo: "peso" },
+  reindoxA:   { nome: "Fase 3A · Reindox (frutas)",   duracao: 15,  proxima: "reindoxB",  tipo: "peso" },
+  reindoxB:   { nome: "Fase 3B · Reindox (grãos)",    duracao: 15,  proxima: "equilibrio",tipo: "peso" },
+  equilibrio: { nome: "Fase 4 · Equilíbrio",          duracao: 120, proxima: "concluido", tipo: "tempo" },
+  concluido:  { nome: "Programa concluído",           duracao: 0,   proxima: null,        tipo: "final" }
+};
+const ORDEM_FASES = ["detox","redox","reindoxA","reindoxB","equilibrio","concluido"];
+
+/* =========================================================
+   CATÁLOGO DE EXAMES
+   Faixas de referência são valores gerais de adulto (podem
+   variar por laboratório/método) — ajuste aqui se precisar.
+   ========================================================= */
+const EXAME_CATALOGO = {
+  glicemia:      { nome:"Glicemia de jejum",              unidade:"mg/dL",  min:70,  max:99,  especialista:"Endocrinologista", categoria:"Metabólico" },
+  hba1c:         { nome:"Hemoglobina glicada (HbA1c)",    unidade:"%",      min:4.0, max:5.6, especialista:"Endocrinologista", categoria:"Metabólico" },
+  insulina:      { nome:"Insulina de jejum",               unidade:"µU/mL",  min:2.6, max:24.9,especialista:"Endocrinologista", categoria:"Metabólico" },
+  colesterolTotal:{ nome:"Colesterol total",               unidade:"mg/dL",  min:0,   max:190, especialista:"Cardiologista",     categoria:"Metabólico" },
+  ldl:           { nome:"LDL",                             unidade:"mg/dL",  min:0,   max:130, especialista:"Cardiologista",     categoria:"Metabólico" },
+  hdl:           { nome:"HDL",                             unidade:"mg/dL",  min:40,  max:999, especialista:"Cardiologista",     categoria:"Metabólico" },
+  triglicerideos:{ nome:"Triglicerídeos",                  unidade:"mg/dL",  min:0,   max:150, especialista:"Cardiologista",     categoria:"Metabólico" },
+  tsh:           { nome:"TSH",                             unidade:"µUI/mL", min:0.4, max:4.0, especialista:"Endocrinologista", categoria:"Tireoide" },
+  t4livre:       { nome:"T4 livre",                        unidade:"ng/dL",  min:0.7, max:1.8, especialista:"Endocrinologista", categoria:"Tireoide" },
+  ureia:         { nome:"Ureia",                           unidade:"mg/dL",  min:15,  max:40,  especialista:"Nefrologista",      categoria:"Renal" },
+  creatinina:    { nome:"Creatinina",                      unidade:"mg/dL",  min:0.6, max:1.2, especialista:"Nefrologista",      categoria:"Renal" },
+  sodio:         { nome:"Sódio",                           unidade:"mEq/L",  min:135, max:145, especialista:"Nefrologista",      categoria:"Renal" },
+  potassio:      { nome:"Potássio",                        unidade:"mEq/L",  min:3.5, max:5.0, especialista:"Nefrologista / Cardiologista", categoria:"Renal" },
+  acidoUrico:    { nome:"Ácido úrico",                     unidade:"mg/dL",  min:3.5, max:7.2, especialista:"Clínico geral / Reumatologista", categoria:"Renal" },
+  tgo:           { nome:"TGO / AST",                       unidade:"U/L",    min:5,   max:40,  especialista:"Hepatologista / Gastro", categoria:"Hepático" },
+  tgp:           { nome:"TGP / ALT",                       unidade:"U/L",    min:7,   max:56,  especialista:"Hepatologista / Gastro", categoria:"Hepático" },
+  vitD:          { nome:"Vitamina D",                      unidade:"ng/mL",  min:30,  max:100, especialista:"Endocrinologista / Nutrólogo", categoria:"Vitaminas" },
+  vitB12:        { nome:"Vitamina B12",                    unidade:"pg/mL",  min:200, max:900, especialista:"Clínico geral / Hematologista", categoria:"Vitaminas" },
+  ferro:         { nome:"Ferro sérico",                    unidade:"µg/dL",  min:60,  max:170, especialista:"Hematologista",     categoria:"Vitaminas" },
+  ferritina:     { nome:"Ferritina",                       unidade:"ng/mL",  min:15,  max:150, especialista:"Hematologista",     categoria:"Vitaminas" }
+};
+const EXAMES_QUALITATIVOS = {
+  hemograma:   { nome:"Hemograma completo",     especialista:"Clínico geral / Hematologista", categoria:"Hematológico" },
+  urinaI:      { nome:"Urina tipo I (EAS)",      especialista:"Urologista / Nefrologista",     categoria:"Outros" },
+  usAbdominal: { nome:"Ultrassom abdominal",     especialista:"Gastro / Hepatologista",         categoria:"Outros" },
+  ecg:         { nome:"Eletrocardiograma",       especialista:"Cardiologista",                  categoria:"Outros" },
+  hiv:         { nome:"HIV (Anti-HIV)",          especialista:"Infectologista",                 categoria:"Doenças transmissíveis", rotulos:{normal:"Não reagente", alterado:"Reagente"} },
+  hepatiteB:   { nome:"Hepatite B (HBsAg)",      especialista:"Infectologista / Hepatologista", categoria:"Doenças transmissíveis", rotulos:{normal:"Não reagente", alterado:"Reagente"} },
+  hepatiteC:   { nome:"Hepatite C (Anti-HCV)",   especialista:"Infectologista / Hepatologista", categoria:"Doenças transmissíveis", rotulos:{normal:"Não reagente", alterado:"Reagente"} },
+  sifilis:     { nome:"Sífilis (VDRL)",          especialista:"Infectologista",                 categoria:"Doenças transmissíveis", rotulos:{normal:"Não reagente", alterado:"Reagente"} }
+};
+
+let pacientes = [];
+let pacienteAberto = null;
+let edicaoAberta = false;
+let examesAberto = true;
+let arquivoAnamneseSelecionado = null;
+let camposAnamneseExtraidos = null;
+
+function hoje(){ return new Date(new Date().toDateString()); }
+function paraData(str){ return str ? new Date(str + "T00:00:00") : null; }
+function diasEntre(a,b){ return Math.floor((b-a)/86400000); }
+function formatarData(str){ if(!str) return "—"; return paraData(str).toLocaleDateString('pt-BR'); }
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
+}
+function fileParaBase64(file){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+function calcularPercentualPerdido(p){
+  if(!p.pesoAtual || !p.pesoInicial) return 0;
+  return ((p.pesoInicial - p.pesoAtual) / p.pesoInicial) * 100;
+}
+
+/* ---------- status exibido no card/ficha ---------- */
+function calcularStatus(p){
+  if(p.faseAtual === 'concluido') return { label: "Meta batida", cls: "gold" };
+  const fase = FASES[p.faseAtual];
+  if(fase.tipo === 'tempo'){
+    const dias = diasEntre(paraData(p.faseIniciadaEm), hoje());
+    if(dias >= fase.duracao) return { label: "Pronto p/ avançar", cls: "blue" };
+    return { label: p.faseAtual === 'detox' ? "Em detox" : "Em manutenção", cls: "green" };
+  }
+  if(p.status === 'sem_perda') return { label: "Sem perda — atenção", cls: "red" };
+  return { label: "Perdendo peso", cls: "green" };
+}
+
+/* =========================================================
+   NAVEGAÇÃO
+   ========================================================= */
+function mostrarView(nome){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-' + nome).classList.add('active');
+  document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.remove('active'));
+  const navBtn = document.getElementById('nav-' + nome);
+  if(navBtn) navBtn.classList.add('active');
+  if(nome === 'pacientes') renderListaTodos();
+  if(nome === 'painel') renderPainel();
+}
+function mostrarViewSemNav(nome){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-' + nome).classList.add('active');
+  document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.remove('active'));
+}
+
+function iniciarSync(){
+  if(!db) return;
+  db.collection('pacientes').orderBy('nome').onSnapshot(snap=>{
+    pacientes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderPainel();
+    renderListaTodos();
+    if(pacienteAberto) abrirFicha(pacienteAberto);
+  }, err=>{ console.error(err); toast("Erro ao sincronizar com o Firebase"); });
+}
+
+function renderPainel(){
+  const ativos = pacientes.filter(p => p.faseAtual !== 'concluido');
+  document.getElementById('st-total').textContent = ativos.length;
+  let prontos = 0, semPerda = 0;
+  const atencao = [];
+  ativos.forEach(p=>{
+    const s = calcularStatus(p);
+    if(s.cls === 'blue') prontos++;
+    if(s.cls === 'red') semPerda++;
+    if(s.cls === 'red' || s.cls === 'blue') atencao.push(p);
+  });
+  document.getElementById('st-teste').textContent = prontos;
+  document.getElementById('st-atraso').textContent = semPerda;
+
+  const wrapAtencao = document.getElementById('lista-atencao');
+  wrapAtencao.innerHTML = '';
+  atencao.slice(0, 8).forEach(p => wrapAtencao.appendChild(cartaoPaciente(p)));
+  document.getElementById('empty-atencao').style.display = atencao.length ? 'none' : 'block';
+
+  const concluidos = pacientes.filter(p => p.faseAtual === 'concluido')
+    .sort((a,b) => (b.concluidoEm||'').localeCompare(a.concluidoEm||'')).slice(0,5);
+  const wrapConc = document.getElementById('lista-concluidos');
+  wrapConc.innerHTML = '';
+  concluidos.forEach(p => wrapConc.appendChild(cartaoPaciente(p)));
+  document.getElementById('empty-concluidos').style.display = concluidos.length ? 'none' : 'block';
+}
+
+function renderListaTodos(){
+  const termo = (document.getElementById('busca').value || '').toLowerCase();
+  const filtrados = pacientes.filter(p =>
+    p.nome.toLowerCase().includes(termo) || (p.contrato||'').toLowerCase().includes(termo)
+  );
+  const wrap = document.getElementById('lista-todos');
+  wrap.innerHTML = '';
+  filtrados.forEach(p => wrap.appendChild(cartaoPaciente(p)));
+  document.getElementById('empty-todos').style.display = filtrados.length ? 'none' : 'block';
+}
+document.getElementById('busca').addEventListener('input', renderListaTodos);
+
+function cartaoPaciente(p){
+  const div = document.createElement('div');
+  div.className = 'patient-card';
+  const s = calcularStatus(p);
+  div.innerHTML = `
+    <div class="pinfo">
+      <div class="pname">${p.nome}</div>
+      <div class="pfase">${FASES[p.faseAtual].nome}</div>
+    </div>
+    <span class="badge ${s.cls}">${s.label}</span>`;
+  div.onclick = () => abrirFicha(p.id);
+  return div;
+}
+
+/* =========================================================
+   FICHA DO PACIENTE
+   ========================================================= */
+function abrirFicha(id){
+  pacienteAberto = id;
+  const p = pacientes.find(x => x.id === id);
+  if(!p) return;
+  mostrarViewSemNav('ficha');
+
+  const s = calcularStatus(p);
+  const perc = calcularPercentualPerdido(p).toFixed(1);
+  const checkins = (p.checkins || []).slice().reverse();
+
+  let garantiaBadge;
+  if(p.garantiaAtiva === true) garantiaBadge = `<span class="badge green">Garantia válida (último teste positivo)</span>`;
+  else if(p.garantiaAtiva === false) garantiaBadge = `<span class="badge amber">Garantia pendente (último teste negativo)</span>`;
+  else garantiaBadge = `<span class="badge gray">Garantia: aguardando 1º teste</span>`;
+
+  let opcoesFase = '';
+  Object.keys(FASES).forEach(k=>{
+    opcoesFase += `<option value="${k}" ${p.faseAtual===k?'selected':''}>${FASES[k].nome}</option>`;
+  });
+
+  let edicaoHtml = '';
+  if(edicaoAberta){
+    edicaoHtml = `
+    <div class="card">
+      <label>Nome do paciente</label>
+      <input type="text" id="ed-nome" value="${p.nome || ''}">
+      <label>Nº do contrato</label>
+      <input type="text" id="ed-contrato" value="${p.contrato || ''}">
+      <label>Data de início</label>
+      <input type="date" id="ed-data" value="${p.dataInicio || ''}">
+      <label>Peso inicial (kg)</label>
+      <input type="number" step="0.1" id="ed-peso" value="${p.pesoInicial != null ? p.pesoInicial : ''}">
+      <label>Peso desejado pelo paciente (kg)</label>
+      <input type="number" step="0.1" id="ed-peso-desejado" value="${p.pesoDesejado != null ? p.pesoDesejado : ''}">
+      <label>Meta de perda (%)</label>
+      <input type="number" step="0.5" id="ed-meta" value="${p.metaPercentual != null ? p.metaPercentual : ''}">
+      <button class="btn btn-primary" onclick="salvarEdicaoPaciente('${p.id}')">Salvar alterações</button>
+      <button class="btn btn-ghost" onclick="toggleEdicaoPaciente()">Cancelar</button>
+    </div>`;
+  }
+
+  let timelineHtml = '';
+  ORDEM_FASES.forEach(f => {
+    if(f === 'redox' && p.checkins && p.checkins.some(c=>c.faseNaEpoca==='especial2b')) return;
+    const atual = p.faseAtual === f;
+    const passada = ORDEM_FASES.indexOf(f) < ORDEM_FASES.indexOf(p.faseAtual);
+    timelineHtml += `
+      <li>
+        <div class="tdot ${passada?'done':atual?'current':''}"></div>
+        <div class="titem">
+          <b>${FASES[f].nome}</b>
+          <div class="meta">${FASES[f].duracao ? FASES[f].duracao + ' dias · ' + (FASES[f].tipo==='peso' ? 'avança com perda de peso' : 'avança por tempo') : 'Etapa final'}${atual ? ' · em andamento' : passada ? ' · concluída' : ''}</div>
+        </div>
+      </li>`;
+  });
+
+  let checkinsHtml = checkins.length ? '' : '<div class="empty">Nenhum check-in registrado ainda.</div>';
+  checkins.forEach(c => {
+    checkinsHtml += `
+      <li>
+        <div class="row1"><span>${formatarData(c.data)}</span><span>${c.peso} kg</span></div>
+        <div class="row2">${FASES[c.faseNaEpoca]?.nome || c.faseNaEpoca} · teste ${c.teste === 'positivo' ? 'positivo ✓' : 'negativo'}${c.obs ? ' · ' + c.obs : ''}</div>
+      </li>`;
+  });
+
+  let anamneseHtml = '';
+  if(p.anamneseFotoURL){
+    anamneseHtml += `<img src="${p.anamneseFotoURL}" class="anamnese-img" onclick="window.open('${p.anamneseFotoURL}','_blank')">`;
+    const a = p.anamnese || {};
+    const camposLabel = { condicoesSaude: 'Condições de saúde', medicamentosEmUso: 'Medicamentos em uso',
+      alergias: 'Alergias', objetivoPaciente: 'Objetivo do paciente', observacoes: 'Observações' };
+    Object.keys(camposLabel).forEach(k=>{ if(a[k]) anamneseHtml += `<div class="campo-extraido"><b>${camposLabel[k]}</b><span>${a[k]}</span></div>`; });
+  } else {
+    anamneseHtml += `<div class="empty" style="padding:16px 0;">Nenhuma anamnese anexada ainda.</div>`;
+  }
+
+  const fotosAcomp = p.acompanhamentoFotos || [];
+  let acompHtml = fotosAcomp.length ? '<div class="thumb-row">' : '<div class="empty" style="padding:10px 0;">Nenhuma folha de acompanhamento fotografada ainda.</div>';
+  fotosAcomp.slice().reverse().forEach(f=>{
+    acompHtml += `<div class="thumb" onclick="window.open('${f.url}','_blank')"><img src="${f.url}"><div class="data-tag">${formatarData(f.data)}</div></div>`;
+  });
+  if(fotosAcomp.length) acompHtml += '</div>';
+
+  const examesHtml = renderExamesHtml(p);
+
+  document.getElementById('ficha-conteudo').innerHTML = `
+    <div class="ficha-header">
+      <h2>${p.nome}</h2>
+      <div class="contrato">Contrato nº ${p.contrato || '—'} · início em ${formatarData(p.dataInicio)}</div>
+      <div class="badge-row"><span class="badge ${s.cls}">${s.label}</span>${garantiaBadge}</div>
+      <div class="metrics">
+        <div class="metric"><div class="v">${p.pesoInicial} → ${p.pesoAtual || p.pesoInicial} kg</div><div class="l">Peso inicial → atual</div></div>
+        <div class="metric"><div class="v">${p.pesoDesejado ? p.pesoDesejado + ' kg' : '—'}</div><div class="l">Peso desejado pelo paciente</div></div>
+        <div class="metric"><div class="v">${perc}% de ${p.metaPercentual}%</div><div class="l">Perda vs. meta da garantia</div></div>
+        <div class="metric"><div class="v">${p.pesoInicioFase != null ? p.pesoInicioFase + ' kg' : '—'}</div><div class="l">Peso no início da fase atual</div></div>
+      </div>
+      <label style="margin-top:16px;">Fase atual (a equipe pode alterar manualmente)</label>
+      <select id="fase-manual-select">${opcoesFase}</select>
+      <button class="btn btn-ghost btn-sm" onclick="alterarFaseManual('${p.id}')">Atualizar fase</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleEdicaoPaciente()">✏️ ${edicaoAberta ? 'Fechar edição' : 'Editar dados do paciente'}</button>
+    </div>
+
+    ${edicaoHtml}
+
+    <h2 class="section-title">Anamnese</h2>
+    <div class="card">
+      ${anamneseHtml}
+      <input type="file" accept="image/*" capture="environment" id="ficha-anamnese-foto" class="hidden-file" onchange="lerAnamneseIA('ficha-anamnese-foto','ficha','${p.id}')">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('ficha-anamnese-foto').click()">📷 ${p.anamneseFotoURL ? 'Reler anamnese' : 'Fotografar e ler anamnese com IA'}</button>
+      <div class="loading-line" id="ficha-anamnese-loading">Lendo a anamnese com IA...</div>
+    </div>
+
+    <h2 class="section-title">Exames</h2>
+    ${examesHtml}
+
+    <h2 class="section-title">Linha do tempo das fases</h2>
+    <div class="card"><ul class="timeline">${timelineHtml}</ul></div>
+
+    ${p.faseAtual !== 'concluido' ? `
+    <h2 class="section-title">Registrar check-in</h2>
+    <div class="card">
+      <label>Data</label>
+      <input type="date" id="ck-data" value="${new Date().toISOString().slice(0,10)}">
+      <label>Peso atual (kg)</label>
+      <input type="number" step="0.1" id="ck-peso" value="${p.pesoAtual || p.pesoInicial}">
+      <label>Resultado do teste de urina (define a garantia)</label>
+      <div class="radio-group">
+        <div class="radio-opt" id="ck-pos" onclick="selecionarTeste('positivo')">Positivo</div>
+        <div class="radio-opt" id="ck-neg" onclick="selecionarTeste('negativo')">Negativo</div>
+      </div>
+      ${p.faseAtual === 'detox' ? `
+      <label>Próxima fase (usada quando os 7 dias de Detox se completarem)</label>
+      <div class="radio-group">
+        <div class="radio-opt" id="ck-fase-redox" onclick="selecionarProximaFase('redox')">Fase 2 · Redox</div>
+        <div class="radio-opt" id="ck-fase-2b" onclick="selecionarProximaFase('especial2b')">Fase 2B · Especial</div>
+      </div>` : ''}
+      <label>Observação (opcional)</label>
+      <textarea id="ck-obs" rows="2" placeholder="Ex: relatou fadiga leve"></textarea>
+      <button class="btn btn-primary" onclick="salvarCheckin('${p.id}')">Salvar check-in</button>
+    </div>` : `
+    <div class="card" style="text-align:center;">
+      <div class="badge gold" style="font-size:13px; padding:8px 16px;">Programa concluído — meta da garantia atingida</div>
+    </div>`}
+
+    <h2 class="section-title">Histórico de check-ins</h2>
+    <div class="card"><ul class="checkin-log">${checkinsHtml}</ul></div>
+
+    <h2 class="section-title">Folha de acompanhamento assinada</h2>
+    <div class="card">
+      ${acompHtml}
+      <input type="file" accept="image/*" capture="environment" id="ficha-acomp-foto" class="hidden-file" onchange="adicionarFotoAcompanhamento('${p.id}')">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('ficha-acomp-foto').click()">📷 Adicionar foto do acompanhamento</button>
+    </div>
+  `;
+}
+
+let testeSelecionado = null;
+let proximaFaseSelecionada = null;
+function selecionarTeste(v){
+  testeSelecionado = v;
+  document.getElementById('ck-pos').classList.toggle('sel-pos', v==='positivo');
+  document.getElementById('ck-neg').classList.toggle('sel-neg', v==='negativo');
+}
+function selecionarProximaFase(v){
+  proximaFaseSelecionada = v;
+  const redoxEl = document.getElementById('ck-fase-redox');
+  const el2b = document.getElementById('ck-fase-2b');
+  if(redoxEl) redoxEl.classList.toggle('sel-fase', v==='redox');
+  if(el2b) el2b.classList.toggle('sel-fase', v==='especial2b');
+}
+
+/* =========================================================
+   FASE MANUAL / EDIÇÃO DE DADOS DO PACIENTE
+   ========================================================= */
+async function alterarFaseManual(id){
+  if(!db){ toast("Configure o Firebase primeiro"); return; }
+  const p = pacientes.find(x => x.id === id);
+  const novaFase = document.getElementById('fase-manual-select').value;
+  if(novaFase === p.faseAtual){ toast("O paciente já está nessa fase"); return; }
+  const hojeStr = new Date().toISOString().slice(0,10);
+  const update = {
+    faseAtual: novaFase,
+    faseIniciadaEm: hojeStr,
+    pesoInicioFase: p.pesoAtual != null ? p.pesoAtual : p.pesoInicial,
+    status: 'ativo'
+  };
+  if(novaFase === 'concluido') update.concluidoEm = hojeStr;
+  await db.collection('pacientes').doc(id).update(update);
+  toast("Fase atualizada manualmente");
+}
+
+function toggleEdicaoPaciente(){
+  edicaoAberta = !edicaoAberta;
+  if(pacienteAberto) abrirFicha(pacienteAberto);
+}
+
+async function salvarEdicaoPaciente(id){
+  if(!db){ toast("Configure o Firebase primeiro"); return; }
+  const nome = document.getElementById('ed-nome').value.trim();
+  const contrato = document.getElementById('ed-contrato').value.trim();
+  const dataInicio = document.getElementById('ed-data').value;
+  const pesoInicial = parseFloat(document.getElementById('ed-peso').value);
+  const pesoDesejado = parseFloat(document.getElementById('ed-peso-desejado').value);
+  const metaPercentual = parseFloat(document.getElementById('ed-meta').value);
+  if(!nome || !dataInicio || isNaN(pesoInicial) || isNaN(metaPercentual)){
+    toast("Preencha os campos obrigatórios"); return;
+  }
+  await db.collection('pacientes').doc(id).update({
+    nome, contrato, dataInicio, pesoInicial,
+    pesoDesejado: isNaN(pesoDesejado) ? null : pesoDesejado,
+    metaPercentual
+  });
+  edicaoAberta = false;
+  toast("Dados do paciente atualizados");
+}
+
+/* =========================================================
+   MOTOR DE AVANÇO DE FASE
+   ========================================================= */
+function avaliarAvanco(p, novoPeso, dataCheckin, escolhaProxima){
+  const fase = FASES[p.faseAtual];
+  if(fase.tipo === 'tempo'){
+    const dias = diasEntre(paraData(p.faseIniciadaEm), paraData(dataCheckin));
+    if(dias >= fase.duracao){
+      let proxima = fase.proxima;
+      if(proxima === 'escolha23'){
+        if(!escolhaProxima) return { erro: true, msg: "Selecione a próxima fase (Redox ou Especial)" };
+        proxima = escolhaProxima;
+      }
+      return { avancar: true, proxima };
+    }
+    return { avancar: false };
+  }
+  // fases que avançam por perda de peso
+  if(novoPeso < p.pesoInicioFase) return { avancar: true, proxima: fase.proxima };
+  return { avancar: false };
+}
+
+async function salvarCheckin(id){
+  if(!db){ toast("Configure o Firebase primeiro"); return; }
+  const p = pacientes.find(x => x.id === id);
+  const data = document.getElementById('ck-data').value;
+  const peso = parseFloat(document.getElementById('ck-peso').value);
+  const obs = document.getElementById('ck-obs').value.trim();
+  if(!data || isNaN(peso)){ toast("Preencha data e peso"); return; }
+  if(!testeSelecionado){ toast("Selecione o resultado do teste"); return; }
+
+  const resultado = avaliarAvanco(p, peso, data, proximaFaseSelecionada);
+  if(resultado.erro){ toast(resultado.msg); return; }
+
+  const checkin = { data, peso, teste: testeSelecionado, obs, faseNaEpoca: p.faseAtual };
+  const update = {
+    pesoAtual: peso,
+    garantiaAtiva: testeSelecionado === 'positivo',
+    checkins: firebase.firestore.FieldValue.arrayUnion(checkin)
+  };
+
+  if(resultado.avancar){
+    update.faseAtual = resultado.proxima;
+    update.faseIniciadaEm = data;
+    update.pesoInicioFase = peso;
+    update.status = 'ativo';
+    if(resultado.proxima === 'concluido') update.concluidoEm = data;
+  } else {
+    update.status = FASES[p.faseAtual].tipo === 'peso' ? 'sem_perda' : 'ativo';
+  }
+
+  await db.collection('pacientes').doc(id).update(update);
+  testeSelecionado = null; proximaFaseSelecionada = null;
+  toast(resultado.avancar ? "Fase avançada!" : "Check-in salvo");
+}
+
+/* =========================================================
+   UPLOAD DE FOTOS
+   ========================================================= */
+async function uploadArquivo(file, caminho){
+  if(!storage){ toast("Configure o Firebase Storage"); return null; }
+  const ref = storage.ref().child(caminho);
+  const snap = await ref.put(file);
+  return await snap.ref.getDownloadURL();
+}
+
+async function adicionarFotoAcompanhamento(id){
+  const input = document.getElementById('ficha-acomp-foto');
+  const file = input.files[0];
+  if(!file) return;
+  toast("Enviando foto...");
+  const caminho = `pacientes/${id}/acompanhamento_${Date.now()}.jpg`;
+  const url = await uploadArquivo(file, caminho);
+  if(!url) return;
+  await db.collection('pacientes').doc(id).update({
+    acompanhamentoFotos: firebase.firestore.FieldValue.arrayUnion({ data: new Date().toISOString().slice(0,10), url })
+  });
+  toast("Foto do acompanhamento salva");
+  input.value = '';
+}
+
+/* =========================================================
+   LEITURA DA ANAMNESE COM IA
+   ========================================================= */
+async function lerAnamneseIA(inputId, contexto, pacienteId){
+  const input = document.getElementById(inputId);
+  const file = input.files[0];
+  if(!file) return;
+  const loadingEl = document.getElementById(contexto === 'novo' ? 'novo-anamnese-loading' : 'ficha-anamnese-loading');
+  loadingEl.style.display = 'block';
+  try{
+    const base64 = await fileParaBase64(file);
+    const resposta = await fetch(CLOUD_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imagemBase64: base64, mediaType: file.type || 'image/jpeg' })
+    });
+    const dados = await resposta.json();
+    if(!dados.ok){ throw new Error(dados.error || 'Falha na leitura'); }
+    const campos = dados.campos;
+    if(contexto === 'novo'){
+      arquivoAnamneseSelecionado = file;
+      camposAnamneseExtraidos = campos;
+      const prev = document.getElementById('novo-anamnese-preview');
+      prev.src = URL.createObjectURL(file);
+      prev.style.display = 'block';
+      renderCamposExtraidosNovo(campos);
+      if(campos.nome && !document.getElementById('f-nome').value) document.getElementById('f-nome').value = campos.nome;
+      if(campos.peso && !document.getElementById('f-peso').value) document.getElementById('f-peso').value = campos.peso;
+    } else {
+      toast("Salvando anamnese...");
+      const caminho = `pacientes/${pacienteId}/anamnese_${Date.now()}.jpg`;
+      const url = await uploadArquivo(file, caminho);
+      await db.collection('pacientes').doc(pacienteId).update({ anamneseFotoURL: url, anamnese: campos });
+      toast("Anamnese lida e salva");
+    }
+  }catch(e){
+    console.error(e);
+    toast("Não consegui ler a anamnese — confira a Cloud Function");
+  }finally{
+    loadingEl.style.display = 'none';
+    input.value = '';
+  }
+}
+
+function renderCamposExtraidosNovo(campos){
+  const wrap = document.getElementById('novo-anamnese-campos');
+  const camposLabel = { condicoesSaude: 'Condições de saúde', medicamentosEmUso: 'Medicamentos em uso',
+    alergias: 'Alergias', objetivoPaciente: 'Objetivo do paciente', observacoes: 'Observações' };
+  wrap.innerHTML = '';
+  Object.keys(camposLabel).forEach(k=>{
+    if(campos[k]){
+      const div = document.createElement('div');
+      div.className = 'campo-extraido';
+      div.innerHTML = `<b>${camposLabel[k]}</b><span>${campos[k]}</span>`;
+      wrap.appendChild(div);
+    }
+  });
+}
+
+/* =========================================================
+   NOVO PACIENTE
+   ========================================================= */
+async function salvarNovoPaciente(){
+  if(!db){ toast("Configure o Firebase primeiro"); return; }
+  const nome = document.getElementById('f-nome').value.trim();
+  const contrato = document.getElementById('f-contrato').value.trim();
+  const dataInicio = document.getElementById('f-data').value;
+  const pesoInicial = parseFloat(document.getElementById('f-peso').value);
+  const pesoDesejado = parseFloat(document.getElementById('f-peso-desejado').value);
+  const metaPercentual = parseFloat(document.getElementById('f-meta').value);
+  const faseInicial = document.getElementById('f-fase-inicial').value;
+
+  if(!nome || !dataInicio || isNaN(pesoInicial) || isNaN(metaPercentual)){
+    toast("Preencha todos os campos obrigatórios"); return;
+  }
+
+  const docRef = db.collection('pacientes').doc();
+  const dados = {
+    nome, contrato, dataInicio, pesoInicial,
+    pesoAtual: pesoInicial,
+    pesoInicioFase: pesoInicial,
+    pesoDesejado: isNaN(pesoDesejado) ? null : pesoDesejado,
+    metaPercentual, faseInicial,
+    faseAtual: faseInicial, faseIniciadaEm: dataInicio,
+    status: 'ativo', garantiaAtiva: null,
+    checkins: [], acompanhamentoFotos: [],
+    examesPedidos: [], examesResultados: [],
+    criadoEm: new Date().toISOString()
+  };
+
+  if(arquivoAnamneseSelecionado){
+    const caminho = `pacientes/${docRef.id}/anamnese_${Date.now()}.jpg`;
+    dados.anamneseFotoURL = await uploadArquivo(arquivoAnamneseSelecionado, caminho);
+    dados.anamnese = camposAnamneseExtraidos || {};
+  }
+
+  await docRef.set(dados);
+
+  document.getElementById('f-nome').value = '';
+  document.getElementById('f-contrato').value = '';
+  document.getElementById('f-data').value = '';
+  document.getElementById('f-peso').value = '';
+  document.getElementById('f-peso-desejado').value = '';
+  document.getElementById('f-meta').value = '8';
+  document.getElementById('f-fase-inicial').value = 'detox';
+  document.getElementById('novo-anamnese-preview').style.display = 'none';
+  document.getElementById('novo-anamnese-campos').innerHTML = '';
+  arquivoAnamneseSelecionado = null;
+  camposAnamneseExtraidos = null;
+
+  toast("Paciente cadastrado!");
+  mostrarView('pacientes');
+}
+
+/* =========================================================
+   EXAMES
+   ========================================================= */
+function renderExamesHtml(p){
+  const pedidos = p.examesPedidos || [];
+  const resultados = p.examesResultados || [];
+
+  const categorias = {};
+  Object.entries(EXAME_CATALOGO).forEach(([k,v])=>{ (categorias[v.categoria] = categorias[v.categoria]||[]).push({k,nome:v.nome}); });
+  Object.entries(EXAMES_QUALITATIVOS).forEach(([k,v])=>{ (categorias[v.categoria] = categorias[v.categoria]||[]).push({k,nome:v.nome}); });
+  let checklistHtml = '';
+  Object.keys(categorias).forEach(cat=>{
+    checklistHtml += `<div style="font-size:11.5px;font-weight:700;color:var(--navy);margin:10px 0 4px;">${cat}</div>`;
+    categorias[cat].forEach(item=>{
+      checklistHtml += `<label style="display:flex;align-items:center;gap:8px;font-weight:500;font-size:13px;margin:6px 0;">
+        <input type="checkbox" class="exame-chk" value="${item.k}" style="width:16px;height:16px;flex-shrink:0;"> ${item.nome}
+      </label>`;
+    });
+  });
+
+  let pedidosHtml = pedidos.length ? '' : '<div class="empty" style="padding:10px 0;">Nenhum pedido de exame ainda.</div>';
+  pedidos.slice().reverse().forEach(ped=>{
+    pedidosHtml += `<div class="campo-extraido"><b>${formatarData(ped.data)}</b><span>${ped.exames.join(', ')}</span></div>`;
+  });
+
+  let opcoesSelect = '<option value="">Selecione o exame...</option>';
+  Object.entries(EXAME_CATALOGO).forEach(([k,v])=> opcoesSelect += `<option value="num:${k}">${v.nome}</option>`);
+  Object.entries(EXAMES_QUALITATIVOS).forEach(([k,v])=> opcoesSelect += `<option value="qual:${k}">${v.nome}</option>`);
+
+  let resultadosHtml = resultados.length ? '' : '<div class="empty" style="padding:10px 0;">Nenhum resultado lançado ainda.</div>';
+  resultados.slice().reverse().forEach(r=>{
+    const cls = r.status === 'alterado' ? 'red' : r.status === 'normal' ? 'green' : 'gray';
+    const rotulo = r.rotulo || (r.status === 'alterado' ? 'Alterado' : r.status === 'normal' ? 'Normal' : 'Registrado');
+    resultadosHtml += `<li>
+      <div class="row1"><span>${r.nome}</span><span class="badge ${cls}">${rotulo}</span></div>
+      <div class="row2">${formatarData(r.data)}${r.valor!=null ? ' · ' + r.valor + ' ' + (r.unidade||'') : ''}${r.status==='alterado' ? ' · encaminhar: ' + r.especialista : ''}${r.obs ? ' · ' + r.obs : ''}</div>
+    </li>`;
+  });
+
+  const encaminhamentos = [...new Set(resultados.filter(r=>r.status==='alterado').map(r=>r.especialista))];
+  const encaminhaHtml = encaminhamentos.length
+    ? encaminhamentos.map(e=>`<span class="badge red" style="margin:3px 4px 3px 0;">${e}</span>`).join('')
+    : '<span class="badge gray">Nenhum encaminhamento pendente</span>';
+
+  return `
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div style="font-size:12px; color:var(--ink-soft);">${resultados.filter(r=>r.status==='alterado').length} exame(s) alterado(s) de ${resultados.length} lançado(s)</div>
+        <button type="button" class="btn btn-ghost btn-sm" style="width:auto; margin:0; padding:6px 12px; flex-shrink:0;" onclick="toggleExames()">${examesAberto ? '▲ Minimizar' : '▼ Expandir'}</button>
+      </div>
+      <div id="exames-corpo" style="display:${examesAberto ? 'block' : 'none'};">
+        <div style="font-size:12px;color:var(--ink-soft);margin:10px 0 6px;">Faixas de referência são valores gerais de adulto — confirme sempre com o laboratório e com o médico responsável antes de encaminhar.</div>
+
+        <label>Pedir exames</label>
+        ${checklistHtml}
+        <button class="btn btn-ghost btn-sm" onclick="gerarPedidoExames('${p.id}')">Gerar pedido</button>
+        <div style="margin-top:10px;">${pedidosHtml}</div>
+
+        <label style="margin-top:20px;">Lançar resultado</label>
+        <select id="ex-select" onchange="alternarCampoResultado()">${opcoesSelect}</select>
+        <div id="ex-campo-numerico" style="display:none;">
+          <label>Valor</label>
+          <input type="number" step="0.01" id="ex-valor">
+        </div>
+        <div id="ex-campo-qualitativo" style="display:none;">
+          <label>Resultado</label>
+          <div class="radio-group">
+            <div class="radio-opt" id="ex-qual-normal" onclick="selecionarQualResultado('normal')">Normal</div>
+            <div class="radio-opt" id="ex-qual-alterado" onclick="selecionarQualResultado('alterado')">Alterado</div>
+          </div>
+        </div>
+        <label>Data</label>
+        <input type="date" id="ex-data" value="${new Date().toISOString().slice(0,10)}">
+        <label>Observação (opcional)</label>
+        <textarea id="ex-obs" rows="2"></textarea>
+        <button class="btn btn-primary" onclick="salvarResultadoExame('${p.id}')">Salvar resultado</button>
+
+        <label style="margin-top:20px;">Resultados lançados</label>
+        <ul class="checkin-log">${resultadosHtml}</ul>
+
+        <label style="margin-top:20px;">Encaminhamentos sugeridos</label>
+        <div>${encaminhaHtml}</div>
+      </div>
+    </div>`;
+}
+
+function toggleExames(){
+  examesAberto = !examesAberto;
+  if(pacienteAberto) abrirFicha(pacienteAberto);
+}
+
+function alternarCampoResultado(){
+  const v = document.getElementById('ex-select').value;
+  document.getElementById('ex-campo-numerico').style.display = v.startsWith('num:') ? 'block' : 'none';
+  document.getElementById('ex-campo-qualitativo').style.display = v.startsWith('qual:') ? 'block' : 'none';
+  qualResultadoSel = null;
+  document.getElementById('ex-qual-normal').classList.remove('sel-pos');
+  document.getElementById('ex-qual-alterado').classList.remove('sel-neg');
+  if(v.startsWith('qual:')){
+    const key = v.split(':')[1];
+    const rot = EXAMES_QUALITATIVOS[key].rotulos || { normal:'Normal', alterado:'Alterado' };
+    document.getElementById('ex-qual-normal').textContent = rot.normal;
+    document.getElementById('ex-qual-alterado').textContent = rot.alterado;
+  }
+}
+
+let qualResultadoSel = null;
+function selecionarQualResultado(v){
+  qualResultadoSel = v;
+  document.getElementById('ex-qual-normal').classList.toggle('sel-pos', v==='normal');
+  document.getElementById('ex-qual-alterado').classList.toggle('sel-neg', v==='alterado');
+}
+
+function gerarPedidoExames(id){
+  const marcados = Array.from(document.querySelectorAll('.exame-chk:checked')).map(el=>el.value);
+  if(!marcados.length){ toast("Selecione ao menos um exame"); return; }
+  const nomes = marcados.map(k => (EXAME_CATALOGO[k]||EXAMES_QUALITATIVOS[k]).nome);
+  const data = new Date().toISOString().slice(0,10);
+  db.collection('pacientes').doc(id).update({
+    examesPedidos: firebase.firestore.FieldValue.arrayUnion({ data, exames: nomes })
+  }).then(()=> toast("Pedido de exames gerado"));
+}
+
+async function salvarResultadoExame(id){
+  if(!db){ toast("Configure o Firebase primeiro"); return; }
+  const sel = document.getElementById('ex-select').value;
+  const data = document.getElementById('ex-data').value;
+  const obs = document.getElementById('ex-obs').value.trim();
+  if(!sel){ toast("Selecione o exame"); return; }
+  if(!data){ toast("Preencha a data"); return; }
+
+  const [tipo, key] = sel.split(':');
+  let entrada;
+  if(tipo === 'num'){
+    const valor = parseFloat(document.getElementById('ex-valor').value);
+    if(isNaN(valor)){ toast("Preencha o valor"); return; }
+    const ex = EXAME_CATALOGO[key];
+    const alterado = valor < ex.min || valor > ex.max;
+    entrada = { data, nome: ex.nome, valor, unidade: ex.unidade, status: alterado ? 'alterado' : 'normal', rotulo: alterado ? 'Alterado' : 'Normal', especialista: ex.especialista, obs };
+  } else {
+    if(!qualResultadoSel){ toast("Marque o resultado"); return; }
+    const ex = EXAMES_QUALITATIVOS[key];
+    const rot = ex.rotulos || { normal:'Normal', alterado:'Alterado' };
+    entrada = { data, nome: ex.nome, valor: null, unidade: '', status: qualResultadoSel, rotulo: rot[qualResultadoSel], especialista: ex.especialista, obs };
+  }
+
+  await db.collection('pacientes').doc(id).update({
+    examesResultados: firebase.firestore.FieldValue.arrayUnion(entrada)
+  });
+  qualResultadoSel = null;
+  toast("Resultado salvo");
+}
+
+iniciarSync();
+</script>
+
+</body>
+</html>
